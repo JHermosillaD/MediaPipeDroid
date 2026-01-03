@@ -41,6 +41,7 @@ android {
 
 dependencies {
 
+    implementation("com.quickbirdstudios:opencv:4.5.3.0")
     implementation("androidx.camera:camera-lifecycle:1.5.2")
     implementation("androidx.camera:camera-view:1.5.2")
     implementation("androidx.camera:camera-camera2:1.5.2")

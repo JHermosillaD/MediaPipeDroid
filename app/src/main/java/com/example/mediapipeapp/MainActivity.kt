@@ -4,6 +4,7 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.util.Size
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,15 +14,19 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import org.opencv.android.OpenCVLoader
 import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
@@ -38,6 +43,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (!OpenCVLoader.initDebug()) {
+            Log.e("OpenCV", "Failed to load OpenCV")
+        } else {
+            Log.i("OpenCV", "OpenCV loaded successfully")
+        }
 
         val isGranted = ContextCompat.checkSelfPermission(
             this, Manifest.permission.CAMERA
@@ -74,11 +85,16 @@ fun CameraScreen() {
     var currentFaceResult by remember { mutableStateOf<FaceLandmarkerResult?>(null) }
     var imageWidth by remember { mutableIntStateOf(640) }
     var imageHeight by remember { mutableIntStateOf(480) }
+    var headPoseResult by remember { mutableStateOf<HeadPoseResult?>(null) }
+    val headPose = remember(imageWidth, imageHeight) {
+        HeadPose(imageWidth, imageHeight)
+    }
     val executor = remember { Executors.newSingleThreadExecutor() }
 
     DisposableEffect(Unit) {
         onDispose {
             executor.shutdown()
+            headPose.release()
         }
     }
 
@@ -111,6 +127,7 @@ fun CameraScreen() {
                             currentFaceResult = result
                             imageWidth = width
                             imageHeight = height
+                            headPoseResult = headPose.estimatePose(result)
                         }
                     }
 
@@ -141,5 +158,37 @@ fun CameraScreen() {
             imageWidth = imageWidth,
             imageHeight = imageHeight
         )
+
+        HeadPoseArrowOverlay(
+            result = currentFaceResult,
+            headPoseResult = headPoseResult,
+            imageWidth = imageWidth,
+            imageHeight = imageHeight,
+            cameraMatrix = headPose.cameraMatrix
+        )
+
+        headPoseResult?.let { pose ->
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Pitch: %.1f°".format(pose.eulerAngles.first),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "Yaw: %.1f°".format(pose.eulerAngles.second),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "Roll: %.1f°".format(pose.eulerAngles.third),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        }
     }
 }

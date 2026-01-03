@@ -49,13 +49,20 @@ fun HeadPoseArrowOverlay(
             offsetY = (canvasHeight - imgHeight * scale) / 2f
         }
 
-        val axisLength = 0.08
+        val noseLandmark = landmarks[1]
+        val noseX = (1 - noseLandmark.y()) * imgWidth
+        val noseY = (1 - noseLandmark.x()) * imgHeight
+        val origin2D = Offset(
+            noseX * scale + offsetX,
+            noseY * scale + offsetY
+        )
+
+        val axisLength = 0.1
 
         val axisPoints3D = MatOfPoint3f(
-            Point3(0.0, 0.0, 0.0),  // Origin (nose tip)
-            Point3(axisLength, 0.0, 0.0),  // X-axis end (forward/blue)
-            Point3(0.0, axisLength, 0.0),  // Y-axis end (right/green)
-            Point3(0.0, 0.0, axisLength)   // Z-axis end (up/red)
+            Point3(axisLength, 0.0, 0.0),  // X-axis
+            Point3(0.0, axisLength, 0.0),  // Y-axis
+            Point3(0.0, 0.0, axisLength)   // Z-axis
         )
 
         val projectedPoints = MatOfPoint2f()
@@ -64,33 +71,31 @@ fun HeadPoseArrowOverlay(
             headPoseResult.rotationMatrix,
             headPoseResult.translationVector,
             cameraMatrix,
-            MatOfDouble(0.0, 0.0, 0.0, 0.0, 0.0), // No distortion
+            MatOfDouble(0.0, 0.0, 0.0, 0.0, 0.0),
             projectedPoints
         )
 
         val pts = projectedPoints.toArray()
-        if (pts.size < 4) return@Canvas
+        if (pts.size < 3) return@Canvas
 
         fun transformPoint(pt: Point): Offset {
             val rawX = pt.x.toFloat()
             val rawY = pt.y.toFloat()
             val finalX = rawX * scale + offsetX
             val finalY = rawY * scale + offsetY
-
             return Offset(finalX, finalY)
         }
 
-        val origin2D = transformPoint(pts[0])
-        val xEnd2D = transformPoint(pts[1])
-        val yEnd2D = transformPoint(pts[2])
-        val zEnd2D = transformPoint(pts[3])
+        val xEnd2D = transformPoint(pts[0])
+        val yEnd2D = transformPoint(pts[1])
+        val zEnd2D = transformPoint(pts[2])
 
-        drawArrow(origin2D, xEnd2D, Color.Blue, strokeWidth = 8f)
-        drawArrow(origin2D, yEnd2D, Color.Green, strokeWidth = 8f)
-        drawArrow(origin2D, zEnd2D, Color.Red, strokeWidth = 8f)
+        drawArrow(origin2D, xEnd2D, Color.Red, strokeWidth = 24f)
+        drawArrow(origin2D, yEnd2D, Color.Blue, strokeWidth = 8f)
+        drawArrow(origin2D, zEnd2D, Color.Green, strokeWidth = 8f)
         drawCircle(
             color = Color.Yellow,
-            radius = 10f,
+            radius = 20f,
             center = origin2D
         )
     }
@@ -103,7 +108,7 @@ private fun DrawScope.drawArrow(
     start: Offset,
     end: Offset,
     color: Color,
-    strokeWidth: Float = 5f
+    strokeWidth: Float = 10f
 ) {
     drawLine(
         color = color,

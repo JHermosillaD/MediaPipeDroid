@@ -170,7 +170,7 @@ fun CameraScreen() {
         headPoseResult?.let { pose ->
             Column(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
+                    .align(Alignment.CenterStart)
                     .padding(16.dp)
             ) {
                 Text(

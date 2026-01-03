@@ -24,18 +24,18 @@ class HeadPose(
 
     private val landmarkIndices = intArrayOf(1, 33, 263, 61, 291, 200)
     private val faceModel3D = MatOfPoint3f(
-        Point3( 0.000,  0.000,  0.000),  // Nose tip
-        Point3( 0.032,  0.038, -0.028),  // Right eye outer (was left)
-        Point3(-0.032,  0.038, -0.028),  // Left eye outer (was right)
-        Point3( 0.028, -0.028, -0.020),  // Right mouth corner (was left)
-        Point3(-0.028, -0.028, -0.020),  // Left mouth corner (was right)
+        Point3( 0.000,  0.000,  0.000),  // Nose
+        Point3( 0.032,  0.038, -0.028),  // Right eye
+        Point3(-0.032,  0.038, -0.028),  // Left eye
+        Point3( 0.028, -0.028, -0.020),  // Right mouth
+        Point3(-0.028, -0.028, -0.020),  // Left mouth
         Point3( 0.000, -0.070, -0.010)   // Chin
     )
 
     init {
-        val calibrationRatio = 0.746
+        val calibrationRatio = 0.746025219
         val fx = imageWidth * calibrationRatio
-        val fy = fx
+        val fy = imageHeight * calibrationRatio
         val cx = imageWidth / 2.0
         val cy = imageHeight / 2.0
 
@@ -63,7 +63,6 @@ class HeadPose(
 
     fun estimatePose(result: FaceLandmarkerResult?): HeadPoseResult? {
         val landmarks = result?.faceLandmarks()?.firstOrNull() ?: return null
-
         val points2D = MatOfPoint2f()
         val pointList = mutableListOf<Point>()
 

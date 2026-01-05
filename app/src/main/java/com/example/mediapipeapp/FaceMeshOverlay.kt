@@ -6,45 +6,43 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.graphics.StrokeCap
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
+import kotlin.math.max
 
 @Composable
 fun FaceMeshOverlay(
     result: FaceLandmarkerResult?,
-    imageWidth: Int = 640,
-    imageHeight: Int = 480
+    imageWidth: Int,
+    imageHeight: Int,
+    modifier: Modifier = Modifier
 ) {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val landmarks = result?.faceLandmarks()?.firstOrNull() ?: return@Canvas
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val faceLandmarks = result?.faceLandmarks()
+        if (!faceLandmarks.isNullOrEmpty()) {
+            val landmarks = faceLandmarks[0]
+            val canvasW = size.width
+            val canvasH = size.height
+            val scaleFactor = max(canvasW / imageWidth.toFloat(), canvasH / imageHeight.toFloat())
+            val scaledWidth = imageWidth * scaleFactor
+            val scaledHeight = imageHeight * scaleFactor
+            val offsetX = (canvasW - scaledWidth) / 2f
+            val offsetY = (canvasH - scaledHeight) / 2f
 
-        val canvasWidth = size.width
-        val canvasHeight = size.height
-        val imgWidth = imageWidth.toFloat()
-        val imgHeight = imageHeight.toFloat()
-        val imageAspectRatio = imgWidth / imgHeight
-        val canvasAspectRatio = canvasWidth / canvasHeight
-        val scale: Float
-        val offsetX: Float
-        val offsetY: Float
+            val points = landmarks.map { landmark ->
+                val mirroredX = 1.0f - landmark.x()
+                val x = (mirroredX * imageWidth * scaleFactor) + offsetX
+                val y = (landmark.y() * imageHeight * scaleFactor) + offsetY
+                Offset(x, y)
+            }
 
-        if (canvasAspectRatio > imageAspectRatio) {
-            scale = canvasHeight / imgHeight
-            offsetX = (canvasWidth - imgWidth * scale) / 2f
-            offsetY = 0f
-        } else {
-            scale = canvasWidth / imgWidth
-            offsetX = 0f
-            offsetY = (canvasHeight - imgHeight * scale) / 2f
-        }
-
-        landmarks.forEachIndexed { index, point ->
-            val x = (1 - point.y()) * imgWidth * scale + offsetX
-            val y = (1 - point.x()) * imgHeight * scale + offsetY
-
-            drawCircle(
+            drawPoints(
+                points = points,
+                pointMode = PointMode.Points,
                 color = Color.Green,
-                radius = 3f,
-                center = Offset(x, y)
+                strokeWidth = 10f,
+                cap = StrokeCap.Round
             )
         }
     }

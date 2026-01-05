@@ -1,6 +1,8 @@
 package com.example.mediapipeapp
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Matrix
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.mediapipe.framework.image.BitmapImageBuilder
@@ -15,6 +17,7 @@ class MediaPipeAnalyzer(
 ) : ImageAnalysis.Analyzer {
 
     private val landmarker: FaceLandmarker
+    private val matrix = Matrix()
 
     init {
         val baseOptions = BaseOptions.builder()
@@ -38,11 +41,28 @@ class MediaPipeAnalyzer(
     override fun analyze(imageProxy: ImageProxy) {
         try {
             val mediaImage = imageProxy.image
+
             if (mediaImage != null) {
-                val bitmap = imageProxy.toBitmap()
+                val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+                var bitmap = imageProxy.toBitmap()
+
+                if (bitmap.width > bitmap.height) {
+                    matrix.reset()
+                    matrix.postRotate(rotationDegrees.toFloat())
+                    val rotatedBitmap = Bitmap.createBitmap(
+                        bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+                    )
+
+                    if (rotatedBitmap != bitmap) {
+                        bitmap = rotatedBitmap
+                    }
+                }
+
                 val mpImage = BitmapImageBuilder(bitmap).build()
                 landmarker.detectAsync(mpImage, imageProxy.imageInfo.timestamp / 1_000_000)
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         } finally {
             imageProxy.close()
         }

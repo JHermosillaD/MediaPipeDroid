@@ -43,7 +43,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         if (!OpenCVLoader.initDebug()) {
             Log.e("OpenCV", "Failed to load OpenCV")
         } else {
@@ -74,7 +73,7 @@ fun AppEntryPoint(isPermissionGranted: Boolean) {
     if (isPermissionGranted) {
         CameraScreen()
     } else {
-        Text(text = "Please enable camera permissions to use this app.")
+        Text(text = "Enable camera permissions")
     }
 }
 
@@ -83,8 +82,8 @@ fun CameraScreen() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var currentFaceResult by remember { mutableStateOf<FaceLandmarkerResult?>(null) }
-    var imageWidth by remember { mutableIntStateOf(640) }
-    var imageHeight by remember { mutableIntStateOf(480) }
+    var imageWidth by remember { mutableIntStateOf(720) }
+    var imageHeight by remember { mutableIntStateOf(1280) }
     var headPoseResult by remember { mutableStateOf<HeadPoseResult?>(null) }
     val headPose = remember(imageWidth, imageHeight) {
         HeadPose(imageWidth, imageHeight)
@@ -103,7 +102,7 @@ fun CameraScreen() {
         AndroidView(
             factory = { ctx ->
                 val previewView = PreviewView(ctx).apply {
-                    scaleType = PreviewView.ScaleType.FIT_CENTER
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
                 }
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
 
@@ -118,7 +117,8 @@ fun CameraScreen() {
 
                     val analyzer = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .setTargetResolution(Size(640, 480))
+                        .setTargetResolution(Size(720, 1280))
+                        .setTargetRotation(previewView.display.rotation)
                         .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                         .build()
 
@@ -153,12 +153,20 @@ fun CameraScreen() {
             modifier = Modifier.fillMaxSize()
         )
 
+        DebugDimensionsOverlay(
+            imageWidth = imageWidth,
+            imageHeight = imageHeight
+        )
         FaceMeshOverlay(
             result = currentFaceResult,
             imageWidth = imageWidth,
             imageHeight = imageHeight
         )
-
+        GazeMaskOverlay(
+            result = currentFaceResult,
+            imageWidth = imageWidth,
+            imageHeight = imageHeight
+        )
         HeadPoseArrowOverlay(
             result = currentFaceResult,
             headPoseResult = headPoseResult,
@@ -166,29 +174,5 @@ fun CameraScreen() {
             imageHeight = imageHeight,
             cameraMatrix = headPose.cameraMatrix
         )
-
-        headPoseResult?.let { pose ->
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Pitch: %.1f°".format(pose.eulerAngles.first),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "Yaw: %.1f°".format(pose.eulerAngles.second),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "Roll: %.1f°".format(pose.eulerAngles.third),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-        }
     }
 }

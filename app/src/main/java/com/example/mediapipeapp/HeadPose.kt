@@ -22,14 +22,15 @@ class HeadPose(
     val cameraMatrix: Mat
     val distCoeffs: MatOfDouble
 
-    private val landmarkIndices = intArrayOf(1, 33, 263, 61, 291, 200)
+    private val landmarkIndices = intArrayOf(1, 10, 103, 332, 127, 356)
+
     private val faceModel3D = MatOfPoint3f(
-        Point3( 0.000,  0.000,  0.000),  // Nose
-        Point3( 0.032,  0.038, -0.028),  // Right eye
-        Point3(-0.032,  0.038, -0.028),  // Left eye
-        Point3( 0.028, -0.028, -0.020),  // Right mouth
-        Point3(-0.028, -0.028, -0.020),  // Left mouth
-        Point3( 0.000, -0.070, -0.010)   // Chin
+        Point3( 0.000,  0.000,  0.000),  // 1: Nose Tip (Origin)
+        Point3( 0.000,  0.050, -0.020),  // 10: Glabella (Between Brows) - Up & slightly back
+        Point3(-0.040,  0.080, -0.040),  // 103: Left High Forehead - Up, Left, Back
+        Point3( 0.040,  0.080, -0.040),  // 332: Right High Forehead - Up, Right, Back
+        Point3(-0.070,  0.040, -0.060),  // 127: Left Temple - Wide Left, Back
+        Point3( 0.070,  0.040, -0.060)   // 356: Right Temple - Wide Right, Back
     )
 
     init {
@@ -69,9 +70,9 @@ class HeadPose(
         for (idx in landmarkIndices) {
             if (idx < landmarks.size) {
                 val lm = landmarks[idx]
-                val x = (1 - lm.y()) * imageWidth
-                val y = (1 - lm.x()) * imageHeight
-                pointList.add(Point(x.toDouble(), y.toDouble()))
+                val pixelX = (1.0f - lm.x()) * imageWidth
+                val pixelY = lm.y() * imageHeight
+                pointList.add(Point(pixelX.toDouble(), pixelY.toDouble()))
             }
         }
 
@@ -100,11 +101,9 @@ class HeadPose(
 
         val rotationMatrix = Mat()
         Calib3d.Rodrigues(rvec, rotationMatrix)
-
         val xAxis = computeXAxis(rotationMatrix)
         val yAxis = computeYAxis(rotationMatrix, xAxis)
         val zAxis = computeZAxis(xAxis, yAxis)
-
         val finalRotation = buildRotationMatrix(xAxis, yAxis, zAxis)
         val eulerAngles = rotationMatrixToEulerAngles(finalRotation)
 
@@ -125,23 +124,20 @@ class HeadPose(
     }
 
     private fun computeYAxis(R: Mat, xAxis: DoubleArray): DoubleArray {
-        val lEye = doubleArrayOf(0.032, 0.038, -0.028)
-        val rEye = doubleArrayOf(-0.032, 0.038, -0.028)
-        val eyeDiff = doubleArrayOf(
-            rEye[0] - lEye[0],
-            rEye[1] - lEye[1],
-            rEye[2] - lEye[2]
+        val lTemple = doubleArrayOf(-0.070, 0.040, -0.060)
+        val rTemple = doubleArrayOf( 0.070, 0.040, -0.060)
+        val templeDiff = doubleArrayOf(
+            rTemple[0] - lTemple[0],
+            rTemple[1] - lTemple[1],
+            rTemple[2] - lTemple[2]
         )
-
-        var lrCam = matVecMultiply(R, eyeDiff)
-
+        var lrCam = matVecMultiply(R, templeDiff)
         val proj = dot(lrCam, xAxis)
         lrCam = doubleArrayOf(
             lrCam[0] - xAxis[0] * proj,
             lrCam[1] - xAxis[1] * proj,
             lrCam[2] - xAxis[2] * proj
         )
-
         val norm = magnitude(lrCam)
 
         return if (norm >= 1e-9) {
@@ -181,10 +177,8 @@ class HeadPose(
     private fun rotationMatrixToEulerAngles(R: Mat): Triple<Double, Double, Double> {
         val r = DoubleArray(9)
         R.get(0, 0, r)
-
         val sy = sqrt(r[0] * r[0] + r[3] * r[3])
         val singular = sy < 1e-6
-
         val pitch: Double
         val yaw: Double
         val roll: Double

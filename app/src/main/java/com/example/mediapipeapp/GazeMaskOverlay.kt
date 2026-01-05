@@ -42,7 +42,9 @@ fun GazeMaskOverlay(
             "forehead_L" to 103,
             "forehead_R" to 332,
             "temple_L" to 127,
-            "temple_R" to 356
+            "temple_R" to 356,
+            "cheek_L" to 101,
+            "cheek_R" to 330
         )
 
         fun getPoint(index: Int): Offset? {
@@ -59,7 +61,8 @@ fun GazeMaskOverlay(
         val foreR = getPoint(indices["forehead_R"] ?: return@Canvas) ?: return@Canvas
         val tempL = getPoint(indices["temple_L"] ?: return@Canvas) ?: return@Canvas
         val tempR = getPoint(indices["temple_R"] ?: return@Canvas) ?: return@Canvas
-
+        val cheekL = getPoint(indices["cheek_L"] ?: return@Canvas) ?: return@Canvas
+        val cheekR = getPoint(indices["cheek_R"] ?: return@Canvas) ?: return@Canvas
         val shieldColor = Color(0xFF00E5FF).copy(alpha = 0.2f)
         val structureColor = Color(0xFF2979FF).copy(alpha = 0.4f)
         val wireColor = Color.White.copy(alpha = 0.5f)
@@ -71,21 +74,27 @@ fun GazeMaskOverlay(
         drawFilledTriangle(nose, glabella, foreR, structureColor)
         drawFilledTriangle(nose, tempL, foreL, structureColor)
         drawFilledTriangle(nose, tempR, foreR, structureColor)
+        drawFilledTriangle(nose, tempL, cheekL, structureColor)
+        drawFilledTriangle(nose, tempR, cheekR, structureColor)
 
         val stroke = Stroke(width = 3f, cap = StrokeCap.Round)
         val rimPath = Path().apply {
-            moveTo(tempL.x, tempL.y)
+            moveTo(cheekL.x, cheekL.y)
+            lineTo(tempL.x, tempL.y)
             lineTo(foreL.x, foreL.y)
             lineTo(foreR.x, foreR.y)
             lineTo(tempR.x, tempR.y)
+            lineTo(cheekR.x, cheekR.y)
         }
         drawPath(rimPath, wireColor, style = stroke)
         drawLine(wireColor, nose, glabella, strokeWidth = 3f)
         drawLine(wireColor, nose, tempL, strokeWidth = 3f)
         drawLine(wireColor, nose, tempR, strokeWidth = 3f)
+        drawLine(wireColor, nose, cheekL, strokeWidth = 3f)
+        drawLine(wireColor, nose, cheekR, strokeWidth = 3f)
 
         val dotColor = Color.Magenta
-        listOf(nose, glabella, foreL, foreR, tempL, tempR).forEach { point ->
+        listOf(nose, glabella, foreL, foreR, tempL, tempR, cheekL, cheekR).forEach { point ->
             drawCircle(
                 color = dotColor,
                 radius = 18f,

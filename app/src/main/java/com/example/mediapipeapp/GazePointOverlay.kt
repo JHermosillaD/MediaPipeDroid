@@ -30,17 +30,16 @@ fun GazePointOverlay(
         val imgHeight = imageHeight.toFloat()
         val scale = max(canvasWidth / imgWidth, canvasHeight / imgHeight)
         val scaledWidth = imgWidth * scale
-        val scaledHeight = imgHeight * scale
         val offsetX = (canvasWidth - scaledWidth) / 2f
-        val offsetY = (canvasHeight - scaledHeight) / 2f
+        val offsetY = (canvasHeight - (imgHeight * scale)) / 2f
         val noseScreenX = ((1.0f - noseLandmark.x()) * imgWidth * scale) + offsetX
         val noseScreenY = (noseLandmark.y() * imgHeight * scale) + offsetY
-        val gazeDistance = 0.25
+        val faceDistanceZ = headPoseResult.translationVector.get(2, 0)[0]
+        val virtualGazeDistance = faceDistanceZ / 2.0
         val points3D = MatOfPoint3f(
             Point3(0.0, 0.0, 0.0),
-            Point3(0.0, 0.0, gazeDistance)
+            Point3(0.0, 0.0, virtualGazeDistance)
         )
-
         val projectedPoints = MatOfPoint2f()
         Calib3d.projectPoints(
             points3D,
@@ -54,12 +53,12 @@ fun GazePointOverlay(
         val points = projectedPoints.toArray()
         if (points.size < 2) return@Canvas
 
-        val rawNose3D = points[0]
-        val rawGaze3D = points[1]
-        val deltaX = (rawGaze3D.x - rawNose3D.x).toFloat()
-        val deltaY = (rawGaze3D.y - rawNose3D.y).toFloat()
-        val gazeScreenX = noseScreenX - (deltaX * scale)
-        val gazeScreenY = noseScreenY - (deltaY * scale)
+        val rawNose2D = points[0]
+        val rawGaze2D = points[1]
+        val deltaX = (rawGaze2D.x - rawNose2D.x).toFloat()
+        val deltaY = (rawGaze2D.y - rawNose2D.y).toFloat()
+        val gazeScreenX = noseScreenX - (deltaX * scale * 2.0f)
+        val gazeScreenY = noseScreenY - (deltaY * scale * 2.0f)
 
         drawCircle(
             color = Color.Black.copy(alpha = 0.5f),

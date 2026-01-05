@@ -48,7 +48,7 @@ fun HeadPoseArrowOverlay(
         val axisPoints3D = MatOfPoint3f(
             Point3(axisLength, 0.0, 0.0),  // X-axis (Pitch)
             Point3(0.0, axisLength, 0.0),  // Y-axis (Yaw)
-            Point3(0.0, 0.0, axisLength)   // Z-axis (Roll)
+            Point3(0.0, 0.0, axisLength*2)   // Z-axis (Roll)
         )
         val projectedPoints = MatOfPoint2f()
         Calib3d.projectPoints(
@@ -76,13 +76,12 @@ fun HeadPoseArrowOverlay(
 
         drawArrow(origin2D, xEnd2D, Color.Red, strokeWidth = 12f)
         drawArrow(origin2D, yEnd2D, Color.Green, strokeWidth = 12f)
-        drawArrow(origin2D, zEnd2D, Color.Blue, strokeWidth = 12f)
-
         drawCircle(
             color = Color.Yellow,
             radius = 20f,
             center = origin2D
         )
+        drawArrow(origin2D, zEnd2D, Color.Blue, strokeWidth = 12f)
     }
 }
 

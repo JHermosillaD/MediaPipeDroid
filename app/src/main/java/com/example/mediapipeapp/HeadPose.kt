@@ -22,7 +22,7 @@ class HeadPose(
     val cameraMatrix: Mat
     private val distCoeffs: MatOfDouble
 
-    private val landmarkIndices = intArrayOf(1, 10, 103, 332, 127, 356)
+    private val landmarkIndices = intArrayOf(1, 10, 103, 332, 127, 356, 101, 330)
 
     private val faceModel3D = MatOfPoint3f(
         Point3( 0.000,  0.000,  0.000),  // 1: Nose Tip
@@ -30,7 +30,9 @@ class HeadPose(
         Point3(-0.040, -0.070, -0.040),  // 103: Forehead L
         Point3( 0.040, -0.070, -0.040),  // 332: Forehead R
         Point3(-0.065, -0.030, -0.070),  // 127: Temple L
-        Point3( 0.065, -0.030, -0.070)   // 356: Temple R
+        Point3( 0.065, -0.030, -0.070),  // 356: Temple R
+        Point3(-0.050, -0.020, -0.035),  // 101: Left Cheekbone (approx)
+        Point3( 0.050, -0.020, -0.035)   // 330: Right Cheekbone (approx)
     )
 
     init {

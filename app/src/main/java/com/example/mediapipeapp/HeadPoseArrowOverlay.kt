@@ -32,7 +32,6 @@ fun HeadPoseArrowOverlay(
         val canvasHeight = size.height
         val imgWidth = imageWidth.toFloat()
         val imgHeight = imageHeight.toFloat()
-
         val scale = max(canvasWidth / imgWidth, canvasHeight / imgHeight)
         val scaledWidth = imgWidth * scale
         val scaledHeight = imgHeight * scale
@@ -81,7 +80,7 @@ fun HeadPoseArrowOverlay(
 
         drawCircle(
             color = Color.Yellow,
-            radius = 8f,
+            radius = 20f,
             center = origin2D
         )
     }

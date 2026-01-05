@@ -15,15 +15,11 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import org.opencv.android.OpenCVLoader
@@ -112,7 +108,7 @@ fun CameraScreen() {
                     val preview = Preview.Builder()
                         .build()
                         .also {
-                            it.setSurfaceProvider(previewView.surfaceProvider)
+                            it.surfaceProvider = previewView.surfaceProvider
                         }
 
                     val analyzer = ImageAnalysis.Builder()
@@ -168,6 +164,13 @@ fun CameraScreen() {
             imageHeight = imageHeight
         )
         HeadPoseArrowOverlay(
+            result = currentFaceResult,
+            headPoseResult = headPoseResult,
+            imageWidth = imageWidth,
+            imageHeight = imageHeight,
+            cameraMatrix = headPose.cameraMatrix
+        )
+        GazePointOverlay(
             result = currentFaceResult,
             headPoseResult = headPoseResult,
             imageWidth = imageWidth,

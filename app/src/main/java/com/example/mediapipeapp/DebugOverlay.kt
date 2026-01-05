@@ -17,26 +17,32 @@ fun DebugDimensionsOverlay(
     imageHeight: Int,
     modifier: Modifier = Modifier
 ) {
-    // FPS Calculation State
-    var lastFrameTime by remember { mutableLongStateOf(0L) }
-    val currentFrameTime = System.currentTimeMillis()
-    val fps = if (lastFrameTime > 0) 1000 / (currentFrameTime - lastFrameTime).coerceAtLeast(1) else 0
-    lastFrameTime = currentFrameTime
+    var frameCount by remember { mutableIntStateOf(0) }
+    var lastFpsUpdateTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var fps by remember { mutableIntStateOf(0) }
 
     Canvas(modifier = modifier.fillMaxSize()) {
+        frameCount++
+
+        val currentTime = System.currentTimeMillis()
+        val elapsed = currentTime - lastFpsUpdateTime
+
+        if (elapsed >= 1000) {
+            fps = ((frameCount * 1000) / elapsed).toInt()
+            frameCount = 0
+            lastFpsUpdateTime = currentTime
+        }
+
         val canvasW = size.width
         val canvasH = size.height
-
         val viewAspectRatio = canvasW / canvasH
         val imageAspectRatio = if (imageHeight > 0) imageWidth.toFloat() / imageHeight else 1f
-
         var scaleFactor = 1f
         var drawW = canvasW
         var drawH = canvasH
         var offsetX = 0f
         var offsetY = 0f
 
-        // Standard FIT_CENTER math
         if (viewAspectRatio > imageAspectRatio) {
             scaleFactor = canvasH / imageHeight
             drawW = imageWidth * scaleFactor
@@ -50,33 +56,39 @@ fun DebugDimensionsOverlay(
         }
 
         val textPaint = Paint().apply {
-            color = android.graphics.Color.GREEN
-            textSize = 35f
+            color = android.graphics.Color.BLACK
+            textSize = 50f
             isFakeBoldText = true
-            setShadowLayer(3f, 0f, 0f, android.graphics.Color.BLACK)
         }
 
         val debugText = """
             FPS: $fps
             Canvas: ${canvasW.toInt()} x ${canvasH.toInt()} -> AR: ${"%.2f".format(viewAspectRatio)}
             MP Image: $imageWidth x $imageHeight -> AR: ${"%.2f".format(imageAspectRatio)}
-            Scale: ${"%.3f".format(scaleFactor)}
+            Scale: ${"%.2f".format(scaleFactor)}
             Offset: X:${offsetX.toInt()}, Y:${offsetY.toInt()}
         """.trimIndent()
 
         var textY = 400f
         debugText.lines().forEach { line ->
             drawContext.canvas.nativeCanvas.drawText(line, 40f, textY, textPaint)
-            textY += 45f
+            textY += 55f
         }
 
-        // Screen Size
+        val debugSign = """
+            By JHermosillaD using MediaPipe
+        """.trimIndent()
+
+        val signY = offsetY + drawH - 60f
+        val signX = drawW / 4
+        debugSign.lines().forEach { line ->
+            drawContext.canvas.nativeCanvas.drawText(line, signX, signY, textPaint)
+        }
+
         drawRect(
             color = Color.Red,
             style = Stroke(width = 24f)
         )
-
-        // Active Area
         drawRect(
             color = Color.Yellow,
             topLeft = Offset(offsetX, offsetY),
@@ -84,7 +96,6 @@ fun DebugDimensionsOverlay(
             style = Stroke(width = 6f)
         )
 
-        // Center of the IMAGE
         val centerX = offsetX + (drawW / 2)
         val centerY = offsetY + (drawH / 2)
         val crossSize = 40f

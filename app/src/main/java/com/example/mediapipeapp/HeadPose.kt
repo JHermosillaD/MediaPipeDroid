@@ -3,6 +3,7 @@ package com.example.mediapipeapp
 import org.opencv.calib3d.Calib3d
 import org.opencv.core.*
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
+import kotlin.math.atan2
 import kotlin.math.sqrt
 
 data class HeadPoseResult(
@@ -122,12 +123,12 @@ class HeadPose(
         val roll: Double
 
         if (!singular) {
-            pitch = Math.atan2(r[7], r[8])
-            yaw = Math.atan2(-r[6], sy)
-            roll = Math.atan2(r[3], r[0])
+            pitch = atan2(r[7], r[8])
+            yaw = atan2(-r[6], sy)
+            roll = atan2(r[3], r[0])
         } else {
-            pitch = Math.atan2(-r[5], r[4])
-            yaw = Math.atan2(-r[6], sy)
+            pitch = atan2(-r[5], r[4])
+            yaw = atan2(-r[6], sy)
             roll = 0.0
         }
 

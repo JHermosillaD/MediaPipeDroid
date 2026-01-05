@@ -83,6 +83,15 @@ fun GazeMaskOverlay(
         drawLine(wireColor, nose, glabella, strokeWidth = 3f)
         drawLine(wireColor, nose, tempL, strokeWidth = 3f)
         drawLine(wireColor, nose, tempR, strokeWidth = 3f)
+
+        val dotColor = Color.Magenta
+        listOf(nose, glabella, foreL, foreR, tempL, tempR).forEach { point ->
+            drawCircle(
+                color = dotColor,
+                radius = 18f,
+                center = point
+            )
+        }
     }
 }
 

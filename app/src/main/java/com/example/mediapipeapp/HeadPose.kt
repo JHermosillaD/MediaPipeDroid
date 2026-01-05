@@ -4,7 +4,6 @@ import org.opencv.calib3d.Calib3d
 import org.opencv.core.*
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import kotlin.math.sqrt
-import org.opencv.core.MatOfDouble
 
 data class HeadPoseResult(
     val rotationMatrix: Mat,
@@ -20,17 +19,17 @@ class HeadPose(
     private val imageHeight: Int
 ) {
     val cameraMatrix: Mat
-    val distCoeffs: MatOfDouble
+    private val distCoeffs: MatOfDouble
 
     private val landmarkIndices = intArrayOf(1, 10, 103, 332, 127, 356)
 
     private val faceModel3D = MatOfPoint3f(
-        Point3( 0.000,  0.000,  0.000),  // 1: Nose Tip (Origin)
-        Point3( 0.000,  0.050, -0.020),  // 10: Glabella (Between Brows) - Up & slightly back
-        Point3(-0.040,  0.080, -0.040),  // 103: Left High Forehead - Up, Left, Back
-        Point3( 0.040,  0.080, -0.040),  // 332: Right High Forehead - Up, Right, Back
-        Point3(-0.070,  0.040, -0.060),  // 127: Left Temple - Wide Left, Back
-        Point3( 0.070,  0.040, -0.060)   // 356: Right Temple - Wide Right, Back
+        Point3( 0.000,  0.000,  0.000),  // 1: Nose Tip
+        Point3( 0.000, -0.050, -0.030),  // 10: Glabella
+        Point3(-0.040, -0.070, -0.040),  // 103: Forehead L
+        Point3( 0.040, -0.070, -0.040),  // 332: Forehead R
+        Point3(-0.065, -0.030, -0.070),  // 127: Temple L
+        Point3( 0.065, -0.030, -0.070)   // 356: Temple R
     )
 
     init {
@@ -41,25 +40,8 @@ class HeadPose(
         val cy = imageHeight / 2.0
 
         cameraMatrix = Mat(3, 3, CvType.CV_64FC1)
-        cameraMatrix.put(0, 0,
-            fx, 0.0, cx,
-            0.0, fy, cy,
-            0.0, 0.0, 1.0
-        )
-
+        cameraMatrix.put(0, 0, fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0)
         distCoeffs = MatOfDouble(0.0, 0.0, 0.0, 0.0, 0.0)
-    }
-
-    fun setCameraIntrinsics(fx: Double, fy: Double, cx: Double, cy: Double) {
-        cameraMatrix.put(0, 0,
-            fx, 0.0, cx,
-            0.0, fy, cy,
-            0.0, 0.0, 1.0
-        )
-    }
-
-    fun setDistortionCoefficients(k1: Double, k2: Double, p1: Double, p2: Double, k3: Double) {
-        distCoeffs.put(0, 0, k1, k2, p1, p2, k3)
     }
 
     fun estimatePose(result: FaceLandmarkerResult?): HeadPoseResult? {
@@ -76,105 +58,61 @@ class HeadPose(
             }
         }
 
-        if (pointList.size != landmarkIndices.size) {
-            return null
-        }
-
+        if (pointList.size != landmarkIndices.size) return null
         points2D.fromList(pointList)
 
         val rvec = Mat()
         val tvec = Mat()
-        val success = Calib3d.solvePnP(
-            faceModel3D,
-            points2D,
-            cameraMatrix,
-            distCoeffs,
-            rvec,
-            tvec,
-            false,
-            Calib3d.SOLVEPNP_ITERATIVE
-        )
-
-        if (!success) {
-            return null
-        }
-
         val rotationMatrix = Mat()
-        Calib3d.Rodrigues(rvec, rotationMatrix)
-        val xAxis = computeXAxis(rotationMatrix)
-        val yAxis = computeYAxis(rotationMatrix, xAxis)
-        val zAxis = computeZAxis(xAxis, yAxis)
-        val finalRotation = buildRotationMatrix(xAxis, yAxis, zAxis)
-        val eulerAngles = rotationMatrixToEulerAngles(finalRotation)
 
-        return HeadPoseResult(
-            rotationMatrix = finalRotation,
-            translationVector = tvec,
-            eulerAngles = eulerAngles,
-            xAxis = xAxis,
-            yAxis = yAxis,
-            zAxis = zAxis
-        )
-    }
+        return try {
+            val success = Calib3d.solvePnP(
+                faceModel3D, points2D, cameraMatrix, distCoeffs, rvec, tvec, false, Calib3d.SOLVEPNP_ITERATIVE
+            )
 
-    private fun computeXAxis(R: Mat): DoubleArray {
-        val z = doubleArrayOf(0.0, 0.0, 1.0)
-        val xAxis = matVecMultiply(R, z)
-        return normalize(xAxis)
-    }
+            if (!success) return null
 
-    private fun computeYAxis(R: Mat, xAxis: DoubleArray): DoubleArray {
-        val lTemple = doubleArrayOf(-0.070, 0.040, -0.060)
-        val rTemple = doubleArrayOf( 0.070, 0.040, -0.060)
-        val templeDiff = doubleArrayOf(
-            rTemple[0] - lTemple[0],
-            rTemple[1] - lTemple[1],
-            rTemple[2] - lTemple[2]
-        )
-        var lrCam = matVecMultiply(R, templeDiff)
-        val proj = dot(lrCam, xAxis)
-        lrCam = doubleArrayOf(
-            lrCam[0] - xAxis[0] * proj,
-            lrCam[1] - xAxis[1] * proj,
-            lrCam[2] - xAxis[2] * proj
-        )
-        val norm = magnitude(lrCam)
+            Calib3d.Rodrigues(rvec, rotationMatrix)
 
-        return if (norm >= 1e-9) {
-            doubleArrayOf(lrCam[0] / norm, lrCam[1] / norm, lrCam[2] / norm)
-        } else {
-            var upRef = doubleArrayOf(0.0, -1.0, 0.0)
-            if (Math.abs(dot(xAxis, upRef)) > 0.98) {
-                upRef = doubleArrayOf(1.0, 0.0, 0.0)
-            }
-            val y = cross(upRef, xAxis)
-            normalize(y)
+            val xAxis = doubleArrayOf(
+                rotationMatrix.get(0, 0)[0],
+                rotationMatrix.get(1, 0)[0],
+                rotationMatrix.get(2, 0)[0]
+            )
+
+            val yAxis = doubleArrayOf(
+                rotationMatrix.get(0, 1)[0],
+                rotationMatrix.get(1, 1)[0],
+                rotationMatrix.get(2, 1)[0]
+            )
+
+            val zAxis = doubleArrayOf(
+                rotationMatrix.get(0, 2)[0],
+                rotationMatrix.get(1, 2)[0],
+                rotationMatrix.get(2, 2)[0]
+            )
+
+            val eulerAngles = rotationMatrixToEulerAngles(rotationMatrix)
+
+            HeadPoseResult(
+                rotationMatrix = rotationMatrix.clone(),
+                translationVector = tvec.clone(),
+                eulerAngles = eulerAngles,
+                xAxis = xAxis,
+                yAxis = yAxis,
+                zAxis = zAxis
+            )
+        } finally {
+            rvec.release()
+            tvec.release()
+            rotationMatrix.release()
+            points2D.release()
         }
-    }
-
-    private fun computeZAxis(xAxis: DoubleArray, yAxis: DoubleArray): DoubleArray {
-        var z = cross(xAxis, yAxis)
-        z = normalize(z)
-
-        val upRef = doubleArrayOf(0.0, -1.0, 0.0)
-        if (dot(z, upRef) < 0) {
-            z = doubleArrayOf(-z[0], -z[1], -z[2])
-        }
-
-        return z
-    }
-
-    private fun buildRotationMatrix(x: DoubleArray, y: DoubleArray, z: DoubleArray): Mat {
-        val R = Mat(3, 3, CvType.CV_64FC1)
-        R.put(0, 0,
-            x[0], y[0], z[0],
-            x[1], y[1], z[1],
-            x[2], y[2], z[2]
-        )
-        return R
     }
 
     private fun rotationMatrixToEulerAngles(R: Mat): Triple<Double, Double, Double> {
+        if (R.rows() != 3 || R.cols() != 3) return Triple(0.0, 0.0, 0.0)
+
         val r = DoubleArray(9)
         R.get(0, 0, r)
         val sy = sqrt(r[0] * r[0] + r[3] * r[3])
@@ -193,48 +131,7 @@ class HeadPose(
             roll = 0.0
         }
 
-        return Triple(
-            Math.toDegrees(pitch),
-            -Math.toDegrees(yaw),
-            Math.toDegrees(roll)
-        )
-    }
-
-    private fun matVecMultiply(mat: Mat, vec: DoubleArray): DoubleArray {
-        val result = DoubleArray(3)
-        val m = DoubleArray(9)
-        mat.get(0, 0, m)
-
-        result[0] = m[0] * vec[0] + m[1] * vec[1] + m[2] * vec[2]
-        result[1] = m[3] * vec[0] + m[4] * vec[1] + m[5] * vec[2]
-        result[2] = m[6] * vec[0] + m[7] * vec[1] + m[8] * vec[2]
-
-        return result
-    }
-
-    private fun dot(a: DoubleArray, b: DoubleArray): Double {
-        return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-    }
-
-    private fun cross(a: DoubleArray, b: DoubleArray): DoubleArray {
-        return doubleArrayOf(
-            a[1] * b[2] - a[2] * b[1],
-            a[2] * b[0] - a[0] * b[2],
-            a[0] * b[1] - a[1] * b[0]
-        )
-    }
-
-    private fun magnitude(v: DoubleArray): Double {
-        return sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
-    }
-
-    private fun normalize(v: DoubleArray): DoubleArray {
-        val mag = magnitude(v)
-        return if (mag > 1e-9) {
-            doubleArrayOf(v[0] / mag, v[1] / mag, v[2] / mag)
-        } else {
-            v
-        }
+        return Triple(Math.toDegrees(pitch), Math.toDegrees(yaw), Math.toDegrees(roll))
     }
 
     fun release() {

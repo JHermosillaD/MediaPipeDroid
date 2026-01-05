@@ -45,7 +45,7 @@ fun HeadPoseArrowOverlay(
             noseX * scale + offsetX,
             noseY * scale + offsetY
         )
-        val axisLength = 0.1
+        val axisLength = 0.05
         val axisPoints3D = MatOfPoint3f(
             Point3(axisLength, 0.0, 0.0),  // X-axis (Pitch)
             Point3(0.0, axisLength, 0.0),  // Y-axis (Yaw)
